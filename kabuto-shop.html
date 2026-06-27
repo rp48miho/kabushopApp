@@ -1,0 +1,1269 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🪲 カブトムシ販売アプリ</title>
+<style>
+  /* ===========================================================
+     全体の基本設定
+     夏祭り屋台っぽい「ちょうちん」と「縁日の幕」をイメージした配色。
+     緑（葉っぱ）・茶色（木の屋台）・黄色（提灯の light）を基調にしている。
+     =========================================================== */
+  :root{
+    --green-dark:  #2f6b3a;   /* 葉っぱの濃い緑（背景） */
+    --green-mid:   #4f9a55;   /* 葉っぱの明るい緑（カード枠など） */
+    --brown:       #8a5a30;   /* 屋台の木の色 */
+    --brown-dark:  #6e4322;   /* 木の濃い色（影・枠） */
+    --yellow:      #ffcf3f;   /* 提灯の黄色（メインアクセント） */
+    --yellow-deep: #ffb300;   /* 濃い黄色（ボタンの押し色） */
+    --cream:       #fff6df;   /* カードの中の紙っぽい色 */
+    --red-cash:    #ff6b4a;   /* 現金ボタンの色（あたたかい色） */
+    --blue-pay:    #3aa0ff;   /* PayPayボタンの色（青系） */
+    --text-dark:   #3a2a14;   /* 文字の基本色（読みやすい濃茶） */
+    --shadow:      rgba(0,0,0,0.25);
+  }
+
+  *{
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent; /* iPhoneのタップ時の灰色枠を消す */
+  }
+
+  html, body{
+    margin:0;
+    padding:0;
+    width:100%;
+    overscroll-behavior-y: contain;
+  }
+
+  body{
+    font-family: "Hiragino Maru Gothic ProN", "Yu Gothic", "Rounded Mplus 1c", sans-serif;
+    background:
+      radial-gradient(circle at 20% 0%, rgba(255,255,255,0.08), transparent 40%),
+      linear-gradient(180deg, var(--green-dark) 0%, var(--green-mid) 45%, #d8e89a 100%);
+    color: var(--text-dark);
+    min-height: 100vh;
+    padding-bottom: 40px;
+    user-select: none; /* 子どもが文字を長押しして選択してしまうのを防ぐ */
+  }
+
+  body::before{
+    content:"🍃";
+    position: fixed;
+    top: -10px; left: -10px;
+    font-size: 60px;
+    opacity: 0.15;
+    transform: rotate(-15deg);
+    pointer-events:none;
+  }
+  body::after{
+    content:"🍃";
+    position: fixed;
+    bottom: -10px; right: -10px;
+    font-size: 70px;
+    opacity: 0.15;
+    transform: rotate(160deg);
+    pointer-events:none;
+  }
+
+  /* ===========================================================
+     ヘッダー
+     =========================================================== */
+  .header{
+    text-align:center;
+    padding: 18px 10px 10px;
+  }
+  .header h1{
+    margin:0;
+    font-size: 26px;
+    color: #fffceb;
+    text-shadow: 2px 2px 0 var(--brown-dark), 0 0 10px rgba(0,0,0,0.2);
+    letter-spacing: 1px;
+  }
+  .header p{
+    margin: 4px 0 0;
+    color: #fffceb;
+    font-size: 13px;
+    opacity: 0.9;
+  }
+
+  /* ===========================================================
+     共通カードデザイン
+     =========================================================== */
+  .card{
+    background: var(--cream);
+    border-radius: 22px;
+    border: 4px solid var(--brown);
+    box-shadow: 0 6px 0 var(--brown-dark), 0 10px 18px var(--shadow);
+    margin: 14px 12px;
+    padding: 16px;
+  }
+
+  /* ===========================================================
+     売上ダッシュボード
+     =========================================================== */
+  .dashboard{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .stat-box{
+    border-radius: 18px;
+    padding: 12px 8px;
+    text-align:center;
+    color:#fff;
+    box-shadow: 0 4px 0 rgba(0,0,0,0.15) inset, 0 4px 8px rgba(0,0,0,0.15);
+    transition: transform 0.15s ease;
+  }
+  .stat-box.pulse{
+    animation: pulseStat 0.5s ease;
+  }
+  @keyframes pulseStat{
+    0%{ transform: scale(1); }
+    40%{ transform: scale(1.12); }
+    100%{ transform: scale(1); }
+  }
+  .stat-box .label{
+    font-size: 13px;
+    font-weight: bold;
+    opacity: 0.95;
+  }
+  .stat-box .value{
+    font-size: 26px;
+    font-weight: 900;
+    margin-top: 2px;
+    text-shadow: 1px 1px 0 rgba(0,0,0,0.2);
+  }
+  .stat-count   { background: linear-gradient(160deg, #6fbf73, var(--green-mid)); }
+  .stat-cash    { background: linear-gradient(160deg, #ff8a65, var(--red-cash)); }
+  .stat-paypay  { background: linear-gradient(160deg, #5ec2ff, var(--blue-pay)); }
+  .stat-total   { background: linear-gradient(160deg, #ffd765, var(--yellow-deep)); }
+  .stat-total .value, .stat-total .label{ color: #4a2e00; text-shadow:none; }
+
+  /* ===========================================================
+     販売登録カード
+     =========================================================== */
+  .sell-card{
+    text-align:center;
+  }
+  .sell-question{
+    font-size: 19px;
+    font-weight: bold;
+    margin: 4px 0 14px;
+  }
+  .qty-row{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+  .qty-btn{
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    border: none;
+    font-size: 30px;
+    font-weight: 900;
+    background: linear-gradient(160deg, #ffe27a, var(--yellow-deep));
+    box-shadow: 0 5px 0 #b9780a, 0 8px 12px rgba(0,0,0,0.2);
+    color: #5c3a00;
+    cursor:pointer;
+    touch-action: manipulation;
+  }
+  .qty-btn:active{
+    transform: translateY(4px);
+    box-shadow: 0 1px 0 #b9780a, 0 2px 4px rgba(0,0,0,0.2);
+  }
+  .qty-display{
+    min-width: 90px;
+    font-size: 40px;
+    font-weight: 900;
+    background: #fff;
+    border: 3px solid var(--brown);
+    border-radius: 16px;
+    padding: 4px 10px;
+    text-align:center;
+    color: var(--text-dark);
+  }
+  .qty-unit{
+    font-size: 15px;
+    color: var(--text-dark);
+    opacity: 0.8;
+    margin-bottom: 14px;
+  }
+
+  .pay-row{
+    display:flex;
+    gap: 12px;
+  }
+  .pay-btn{
+    flex:1;
+    padding: 20px 6px;
+    border-radius: 20px;
+    border: none;
+    font-size: 19px;
+    font-weight: 900;
+    color: #fff;
+    cursor: pointer;
+    line-height: 1.4;
+    touch-action: manipulation;
+  }
+  .pay-btn .pay-emoji{
+    font-size: 26px;
+    display:block;
+  }
+  .pay-cash{
+    background: linear-gradient(160deg, #ff9a7a, var(--red-cash));
+    box-shadow: 0 6px 0 #c8431f, 0 10px 14px rgba(0,0,0,0.2);
+  }
+  .pay-paypay{
+    background: linear-gradient(160deg, #6fc4ff, var(--blue-pay));
+    box-shadow: 0 6px 0 #1f6fb8, 0 10px 14px rgba(0,0,0,0.2);
+  }
+  .pay-btn:active{
+    transform: translateY(5px);
+  }
+  .pay-cash:active{ box-shadow: 0 1px 0 #c8431f, 0 2px 6px rgba(0,0,0,0.2); }
+  .pay-paypay:active{ box-shadow: 0 1px 0 #1f6fb8, 0 2px 6px rgba(0,0,0,0.2); }
+
+  /* ===========================================================
+     メッセージ（トースト）
+     成功（黄色）と、エラー（赤）の2種類のスタイルを用意する
+     =========================================================== */
+  .toast-wrap{
+    position: fixed;
+    top: 0; left:0; right:0;
+    display:flex;
+    justify-content:center;
+    pointer-events:none;
+    z-index: 50;
+    padding-top: 14px;
+  }
+  .toast{
+    background: var(--yellow);
+    border: 3px solid var(--brown-dark);
+    border-radius: 18px;
+    padding: 12px 22px;
+    font-size: 18px;
+    font-weight: 900;
+    color: #4a2e00;
+    box-shadow: 0 6px 14px rgba(0,0,0,0.3);
+    opacity: 0;
+    transform: translateY(-20px) scale(0.9);
+    transition: all 0.25s ease;
+    max-width: 86%;
+    text-align:center;
+  }
+  .toast.show{
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  .toast.toast-error{
+    background: #ff5b4a;
+    border-color: #a32a1d;
+    color: #fff;
+  }
+
+  /* 取り消しボタン */
+  .undo-wrap{
+    text-align:center;
+    margin: -4px 12px 14px;
+    height: 54px;
+  }
+  .undo-btn{
+    width: 100%;
+    max-width: 360px;
+    padding: 12px;
+    border-radius: 16px;
+    border: 3px solid var(--brown-dark);
+    background: linear-gradient(160deg, #fff0b0, var(--yellow));
+    color: #5c3a00;
+    font-size: 16px;
+    font-weight: 900;
+    cursor: pointer;
+    opacity: 0;
+    transform: scale(0.9);
+    transition: all 0.2s ease;
+    pointer-events:none;
+  }
+  .undo-btn.show{
+    opacity: 1;
+    transform: scale(1);
+    pointer-events:auto;
+  }
+
+  /* ===========================================================
+     販売履歴
+     =========================================================== */
+  .history-title{
+    font-size: 17px;
+    font-weight: 900;
+    margin: 0 0 10px;
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .history-list{
+    max-height: 320px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .history-empty{
+    text-align:center;
+    color: #8a7456;
+    font-size: 14px;
+    padding: 18px 0;
+  }
+  .history-item{
+    background:#fffefb;
+    border: 2px solid #e7dcc0;
+    border-radius: 14px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    animation: slideIn 0.25s ease;
+  }
+  @keyframes slideIn{
+    from{ opacity:0; transform: translateX(-12px); }
+    to{ opacity:1; transform: translateX(0); }
+  }
+  .history-row{
+    display:flex;
+    align-items:center;
+    justify-content: space-between;
+  }
+  .history-left{
+    display:flex;
+    flex-direction:column;
+    gap: 2px;
+  }
+  .history-time{
+    font-size: 11px;
+    color:#a08c66;
+  }
+  .history-main{
+    font-size: 15px;
+    font-weight: bold;
+    display:flex;
+    align-items:center;
+    gap: 6px;
+  }
+  .history-badge{
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    color:#fff;
+    font-weight: 900;
+  }
+  .badge-cash{ background: var(--red-cash); }
+  .badge-paypay{ background: var(--blue-pay); }
+  .history-right{
+    display:flex;
+    align-items:center;
+    gap: 10px;
+  }
+  .history-amount{
+    font-size: 16px;
+    font-weight: 900;
+    color: var(--green-dark);
+  }
+  /* 削除ボタンはタップしやすいように当たり判定を大きく確保する */
+  .delete-btn{
+    background: #fff0ea;
+    border: 2px solid #e0a08c;
+    border-radius: 12px;
+    font-size: 18px;
+    cursor:pointer;
+    padding: 8px 10px;
+    line-height:1;
+    touch-action: manipulation;
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .delete-btn:active{
+    background: #ffd9c9;
+  }
+  /* 現金で受け取った場合は、おつりの情報を小さく追記表示する */
+  .history-change-note{
+    margin-top: 6px;
+    font-size: 12px;
+    color: #8a6a3a;
+    background: #fdf3da;
+    border-radius: 10px;
+    padding: 5px 8px;
+  }
+
+  /* ===========================================================
+     リセットボタン
+     =========================================================== */
+  .reset-btn{
+    display:block;
+    width: calc(100% - 24px);
+    margin: 20px 12px 4px;
+    padding: 16px;
+    border-radius: 18px;
+    border: 3px solid #a32a1d;
+    background: linear-gradient(160deg, #ff7b63, #e8392a);
+    color: #fff;
+    font-size: 16px;
+    font-weight: 900;
+    cursor:pointer;
+    box-shadow: 0 5px 0 #8c2015, 0 8px 12px rgba(0,0,0,0.2);
+    touch-action: manipulation;
+  }
+  .reset-btn:active{
+    transform: translateY(4px);
+    box-shadow: 0 1px 0 #8c2015, 0 2px 4px rgba(0,0,0,0.2);
+  }
+
+  .footer-note{
+    text-align:center;
+    font-size: 11px;
+    color: #fffceb;
+    opacity: 0.8;
+    margin-top: 10px;
+    padding-bottom: 10px;
+  }
+
+  /* ===========================================================
+     モーダル共通（確認ダイアログ用）
+     ※ ブラウザ標準の confirm()/alert() は、ホーム画面に追加した
+       状態（スタンドアロン表示）だと正しく動かない端末があるため、
+       アプリ内で自作したモーダルウィンドウを使う。
+     =========================================================== */
+  .modal-overlay{
+    position: fixed;
+    inset: 0;
+    background: rgba(40, 28, 10, 0.55);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding: 16px;
+    z-index: 200;
+    opacity: 0;
+    pointer-events:none;
+    transition: opacity 0.2s ease;
+  }
+  .modal-overlay.show{
+    opacity: 1;
+    pointer-events:auto;
+  }
+  .modal-card{
+    width: 100%;
+    max-width: 360px;
+    background: var(--cream);
+    border-radius: 24px;
+    border: 4px solid var(--brown);
+    box-shadow: 0 10px 0 var(--brown-dark), 0 16px 26px rgba(0,0,0,0.35);
+    padding: 22px;
+    text-align:center;
+    transform: scale(0.88);
+    transition: transform 0.2s ease;
+    max-height: 90vh;
+    overflow-y:auto;
+  }
+  .modal-overlay.show .modal-card{
+    transform: scale(1);
+  }
+  .modal-title{
+    font-size: 19px;
+    font-weight: 900;
+    margin: 0 0 10px;
+  }
+  .modal-message{
+    font-size: 16px;
+    margin: 0 0 18px;
+    line-height: 1.5;
+  }
+  .modal-btn-row{
+    display:flex;
+    gap: 10px;
+  }
+  .modal-btn{
+    flex:1;
+    padding: 15px 8px;
+    border-radius: 16px;
+    border: none;
+    font-size: 16px;
+    font-weight: 900;
+    cursor:pointer;
+    touch-action: manipulation;
+  }
+  .modal-btn:active{ transform: translateY(3px); }
+  .modal-btn-cancel{
+    background: #e7dcc0;
+    color: #5c4a2a;
+    box-shadow: 0 4px 0 #c9b98e;
+  }
+  .modal-btn-confirm{
+    background: linear-gradient(160deg, #ff8a65, var(--red-cash));
+    color: #fff;
+    box-shadow: 0 4px 0 #c8431f;
+  }
+  .modal-btn-confirm.is-disabled{
+    background: #d9d2c2;
+    color: #a99e85;
+    box-shadow: 0 4px 0 #bdb6a2;
+    cursor: not-allowed;
+  }
+
+  /* ===========================================================
+     現金おつり計算モーダル
+     =========================================================== */
+  .cash-total-label{
+    font-size: 14px;
+    color: #6b5836;
+    margin-bottom: 2px;
+  }
+  .cash-total-amount{
+    font-size: 26px;
+    font-weight: 900;
+    color: var(--text-dark);
+    margin-bottom: 14px;
+  }
+  .cash-received-label{
+    font-size: 13px;
+    color: #6b5836;
+    margin-bottom: 2px;
+  }
+  .cash-received-value{
+    font-size: 36px;
+    font-weight: 900;
+    color: var(--green-dark);
+    margin-bottom: 12px;
+  }
+  .quick-grid{
+    display:grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .quick-btn{
+    padding: 14px 4px;
+    border-radius: 14px;
+    border: none;
+    background: linear-gradient(160deg, #fff0b0, var(--yellow));
+    color: #5c3a00;
+    font-size: 15px;
+    font-weight: 900;
+    box-shadow: 0 4px 0 #d99b00;
+    cursor:pointer;
+    touch-action: manipulation;
+  }
+  .quick-btn:active{
+    transform: translateY(3px);
+    box-shadow: 0 1px 0 #d99b00;
+  }
+  .quick-btn.special{
+    background: linear-gradient(160deg, #9be39e, var(--green-mid));
+    color: #1d3b20;
+    box-shadow: 0 4px 0 #2f6b3a;
+  }
+  .clear-btn{
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 14px;
+    border-radius: 14px;
+    border: 2px dashed #b59a68;
+    background: transparent;
+    color: #8a7456;
+    font-size: 13px;
+    font-weight: bold;
+    cursor:pointer;
+    touch-action: manipulation;
+  }
+  .change-box{
+    border-radius: 16px;
+    padding: 12px;
+    margin-bottom: 16px;
+  }
+  .change-box.ok{
+    background: linear-gradient(160deg, #ffe27a, var(--yellow-deep));
+  }
+  .change-box.short{
+    background: linear-gradient(160deg, #ffb199, #ff7a5c);
+  }
+  .change-label{
+    font-size: 13px;
+    font-weight: bold;
+    color: #4a2e00;
+  }
+  .change-value{
+    font-size: 28px;
+    font-weight: 900;
+    color: #4a2e00;
+  }
+  .change-box.short .change-label,
+  .change-box.short .change-value{
+    color: #fff;
+  }
+</style>
+</head>
+<body>
+
+  <!-- 上に出てくるメッセージ -->
+  <div class="toast-wrap">
+    <div class="toast" id="toast"></div>
+  </div>
+
+  <!-- ヘッダー -->
+  <div class="header">
+    <h1>🪲 カブトムシ売り場</h1>
+    <p>1匹 200円 ・ 夏祭り限定！</p>
+  </div>
+
+  <!-- 売上ダッシュボード -->
+  <div class="card">
+    <div class="dashboard">
+      <div class="stat-box stat-count" id="box-count">
+        <div class="label">🪲 売れた数</div>
+        <div class="value" id="val-count">0匹</div>
+      </div>
+      <div class="stat-box stat-total" id="box-total">
+        <div class="label">💵 総売上</div>
+        <div class="value" id="val-total">0円</div>
+      </div>
+      <div class="stat-box stat-cash" id="box-cash">
+        <div class="label">💰 現金</div>
+        <div class="value" id="val-cash">0円</div>
+      </div>
+      <div class="stat-box stat-paypay" id="box-paypay">
+        <div class="label">📱 PayPay</div>
+        <div class="value" id="val-paypay">0円</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 販売登録カード -->
+  <div class="card sell-card">
+    <div class="sell-question">何匹買いますか？</div>
+
+    <div class="qty-row">
+      <button class="qty-btn" id="btn-minus" aria-label="数を減らす">−</button>
+      <div class="qty-display" id="qty-display">1</div>
+      <button class="qty-btn" id="btn-plus" aria-label="数を増やす">＋</button>
+    </div>
+    <div class="qty-unit">匹 （<span id="qty-price">200</span>円）</div>
+
+    <div class="pay-row">
+      <button class="pay-btn pay-cash" id="btn-cash">
+        <span class="pay-emoji">💴</span>現金で売る
+      </button>
+      <button class="pay-btn pay-paypay" id="btn-paypay">
+        <span class="pay-emoji">📱</span>PayPayで売る
+      </button>
+    </div>
+  </div>
+
+  <!-- 取り消しボタン（登録後2秒だけ表示） -->
+  <div class="undo-wrap">
+    <button class="undo-btn" id="btn-undo">↩️ 取り消す</button>
+  </div>
+
+  <!-- 販売履歴 -->
+  <div class="card">
+    <div class="history-title">📜 販売履歴</div>
+    <div class="history-list" id="history-list">
+      <div class="history-empty" id="history-empty">まだ売れていません🪲</div>
+    </div>
+  </div>
+
+  <!-- リセット -->
+  <button class="reset-btn" id="btn-reset">🔴 今日の売上をリセット</button>
+  <div class="footer-note">夏祭りがんばれ！🏮</div>
+
+  <!-- =================================================================
+       現金おつり計算モーダル
+       ================================================================= -->
+  <div class="modal-overlay" id="cash-modal-overlay">
+    <div class="modal-card">
+      <div class="modal-title">💴 現金で受け取り</div>
+
+      <div class="cash-total-label">合計</div>
+      <div class="cash-total-amount" id="cash-total-amount">0円</div>
+
+      <div class="cash-received-label">受け取った金額</div>
+      <div class="cash-received-value" id="cash-received-value">0円</div>
+
+      <div class="quick-grid">
+        <button class="quick-btn" data-amount="100">100円</button>
+        <button class="quick-btn" data-amount="500">500円</button>
+        <button class="quick-btn" data-amount="1000">1,000円</button>
+        <button class="quick-btn" data-amount="5000">5,000円</button>
+        <button class="quick-btn" data-amount="10000">10,000円</button>
+        <button class="quick-btn special" data-amount="exact">ちょうど</button>
+      </div>
+      <button class="clear-btn" id="cash-clear-btn">0円からやりなおす</button>
+
+      <div class="change-box ok" id="change-box">
+        <div class="change-label" id="change-label">おつり</div>
+        <div class="change-value" id="change-value">0円</div>
+      </div>
+
+      <div class="modal-btn-row">
+        <button class="modal-btn modal-btn-cancel" id="cash-cancel-btn">キャンセル</button>
+        <button class="modal-btn modal-btn-confirm is-disabled" id="cash-confirm-btn">💴 受け取る</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =================================================================
+       汎用の確認モーダル（削除・リセットで利用）
+       ================================================================= -->
+  <div class="modal-overlay" id="confirm-modal-overlay">
+    <div class="modal-card">
+      <div class="modal-title" id="confirm-modal-title">確認</div>
+      <div class="modal-message" id="confirm-modal-message"></div>
+      <div class="modal-btn-row">
+        <button class="modal-btn modal-btn-cancel" id="confirm-modal-cancel">キャンセル</button>
+        <button class="modal-btn modal-btn-confirm" id="confirm-modal-ok">はい</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* ===============================================================
+   カブトムシ販売管理アプリ
+   - 子ども(小1・小4)が使うことを想定し、極力シンプルなロジックにする
+   - データは LocalStorage に保存し、オフラインでも動作する
+   - 確認が必要な操作は、ブラウザ標準の confirm() ではなく、
+     アプリ内に自作したモーダルウィンドウを使う
+     （confirm()はホーム画面に追加した状態だと動かない端末があるため）
+   =============================================================== */
+
+(function () {
+  "use strict";
+
+  // ---------------------------------------------------------------
+  // 定数
+  // ---------------------------------------------------------------
+  var PRICE_PER_UNIT = 200;           // カブトムシ1匹の値段（円）
+  var STORAGE_KEY = "kabuto_shop_data_v1"; // LocalStorageに保存するときのキー名
+  var MAX_QTY = 99;                   // 入力できる最大の匹数（暴走防止）
+  var MIN_QTY = 1;                    // 入力できる最小の匹数
+
+  // 登録後に表示するお礼メッセージのバリエーション
+  var THANK_YOU_MESSAGES = [
+    "ありがとう😊",
+    "やったね！🪲",
+    "また来てね！",
+    "すごい！売れたよ！"
+  ];
+
+  // ---------------------------------------------------------------
+  // 状態（state）
+  // appData の形は次の通り：
+  // {
+  //   count: 売れた匹数の合計,
+  //   cash: 現金の合計金額,
+  //   paypay: PayPayの合計金額,
+  //   history: [ { id, time, qty, method, amount, received, change }, ... ] // 新しい順
+  // }
+  // received / change は現金のときだけ入る（PayPayはnull）
+  // ---------------------------------------------------------------
+  var appData = loadData();
+  var currentQty = 1;          // 現在「何匹買いますか？」で選ばれている数
+  var undoTimerId = null;      // 取り消しボタンを隠すためのタイマーID
+  var toastTimerId = null;     // メッセージを隠すためのタイマーID
+
+  // 現金モーダル用の作業中データ
+  var cashPendingQty = 1;      // モーダルを開いたときの匹数
+  var cashTotal = 0;           // 合計金額
+  var cashReceived = 0;        // 今、入力されている受け取り金額
+
+  // 汎用確認モーダル用：OKを押したときに実行する処理を入れておく箱
+  var confirmModalCallback = null;
+
+  // ---------------------------------------------------------------
+  // DOM要素の取得
+  // ---------------------------------------------------------------
+  var el = {
+    valCount: document.getElementById("val-count"),
+    valCash: document.getElementById("val-cash"),
+    valPaypay: document.getElementById("val-paypay"),
+    valTotal: document.getElementById("val-total"),
+    boxCount: document.getElementById("box-count"),
+    boxCash: document.getElementById("box-cash"),
+    boxPaypay: document.getElementById("box-paypay"),
+    boxTotal: document.getElementById("box-total"),
+
+    qtyDisplay: document.getElementById("qty-display"),
+    qtyPrice: document.getElementById("qty-price"),
+    btnMinus: document.getElementById("btn-minus"),
+    btnPlus: document.getElementById("btn-plus"),
+    btnCash: document.getElementById("btn-cash"),
+    btnPaypay: document.getElementById("btn-paypay"),
+
+    toast: document.getElementById("toast"),
+    undoBtn: document.getElementById("btn-undo"),
+
+    historyList: document.getElementById("history-list"),
+    historyEmpty: document.getElementById("history-empty"),
+
+    btnReset: document.getElementById("btn-reset"),
+
+    // 現金モーダル
+    cashModalOverlay: document.getElementById("cash-modal-overlay"),
+    cashTotalAmount: document.getElementById("cash-total-amount"),
+    cashReceivedValue: document.getElementById("cash-received-value"),
+    cashClearBtn: document.getElementById("cash-clear-btn"),
+    cashCancelBtn: document.getElementById("cash-cancel-btn"),
+    cashConfirmBtn: document.getElementById("cash-confirm-btn"),
+    changeBox: document.getElementById("change-box"),
+    changeLabel: document.getElementById("change-label"),
+    changeValue: document.getElementById("change-value"),
+
+    // 汎用確認モーダル
+    confirmModalOverlay: document.getElementById("confirm-modal-overlay"),
+    confirmModalTitle: document.getElementById("confirm-modal-title"),
+    confirmModalMessage: document.getElementById("confirm-modal-message"),
+    confirmModalCancel: document.getElementById("confirm-modal-cancel"),
+    confirmModalOk: document.getElementById("confirm-modal-ok")
+  };
+
+  // ---------------------------------------------------------------
+  // 初期化処理
+  // ---------------------------------------------------------------
+  function init() {
+    renderAll();
+    bindEvents();
+  }
+
+  function renderAll() {
+    renderStats();
+    renderQty();
+    renderHistory();
+  }
+
+  // ---------------------------------------------------------------
+  // LocalStorage の読み込み・保存
+  // ---------------------------------------------------------------
+  function loadData() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) {
+        return createEmptyData();
+      }
+      var parsed = JSON.parse(raw);
+      if (typeof parsed.count !== "number") parsed.count = 0;
+      if (typeof parsed.cash !== "number") parsed.cash = 0;
+      if (typeof parsed.paypay !== "number") parsed.paypay = 0;
+      if (!Array.isArray(parsed.history)) parsed.history = [];
+      return parsed;
+    } catch (e) {
+      console.error("データの読み込みに失敗しました。初期化します。", e);
+      return createEmptyData();
+    }
+  }
+
+  function createEmptyData() {
+    return { count: 0, cash: 0, paypay: 0, history: [] };
+  }
+
+  function saveData() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+    } catch (e) {
+      // 保存できない場合（容量制限など）でもアプリが落ちないようにする。
+      // alert()は使わず、画面上部のメッセージ（エラー用の見た目）で知らせる。
+      console.error("データの保存に失敗しました。", e);
+      showToast("保存できませんでした…", "error");
+    }
+  }
+
+  // ---------------------------------------------------------------
+  // 数字を3桁区切りの文字列にする（例: 1200 -> "1,200"）
+  // ---------------------------------------------------------------
+  function formatNumber(num) {
+    return num.toLocaleString("ja-JP");
+  }
+
+  // ---------------------------------------------------------------
+  // 売上ダッシュボードの表示更新
+  // ---------------------------------------------------------------
+  function renderStats() {
+    var total = appData.cash + appData.paypay;
+    el.valCount.textContent = formatNumber(appData.count) + "匹";
+    el.valCash.textContent = formatNumber(appData.cash) + "円";
+    el.valPaypay.textContent = formatNumber(appData.paypay) + "円";
+    el.valTotal.textContent = formatNumber(total) + "円";
+  }
+
+  function pulseBox(boxEl) {
+    boxEl.classList.remove("pulse");
+    void boxEl.offsetWidth; // リフローを強制してアニメーションをリセット
+    boxEl.classList.add("pulse");
+  }
+
+  // ---------------------------------------------------------------
+  // 「何匹買いますか？」の表示更新
+  // ---------------------------------------------------------------
+  function renderQty() {
+    el.qtyDisplay.textContent = currentQty;
+    el.qtyPrice.textContent = formatNumber(currentQty * PRICE_PER_UNIT);
+  }
+
+  function changeQty(diff) {
+    var next = currentQty + diff;
+    if (next < MIN_QTY) next = MIN_QTY;
+    if (next > MAX_QTY) next = MAX_QTY;
+    currentQty = next;
+    renderQty();
+  }
+
+  // ---------------------------------------------------------------
+  // 販売を確定させる共通処理
+  // method: "cash" または "paypay"
+  // extra: 現金のときだけ { received, change } を渡す。PayPayはnullでよい
+  // ---------------------------------------------------------------
+  function finalizeSale(method, qty, extra) {
+    var amount = qty * PRICE_PER_UNIT;
+    var now = new Date();
+
+    var record = {
+      id: now.getTime() + "_" + Math.random().toString(36).slice(2, 7),
+      time: formatTime(now),
+      qty: qty,
+      method: method,
+      amount: amount,
+      received: extra && typeof extra.received === "number" ? extra.received : null,
+      change: extra && typeof extra.change === "number" ? extra.change : null
+    };
+
+    appData.count += qty;
+    if (method === "cash") {
+      appData.cash += amount;
+    } else {
+      appData.paypay += amount;
+    }
+
+    appData.history.unshift(record);
+
+    saveData();
+    renderAll();
+
+    pulseBox(el.boxCount);
+    pulseBox(el.boxTotal);
+    pulseBox(method === "cash" ? el.boxCash : el.boxPaypay);
+
+    showToast(pickRandomMessage(), "success");
+    showUndoButton(record.id);
+
+    // 次の販売に備えて匹数を1に戻す
+    currentQty = 1;
+    renderQty();
+  }
+
+  function formatTime(dateObj) {
+    var h = dateObj.getHours();
+    var m = dateObj.getMinutes();
+    var hh = (h < 10 ? "0" : "") + h;
+    var mm = (m < 10 ? "0" : "") + m;
+    return hh + ":" + mm;
+  }
+
+  function pickRandomMessage() {
+    var idx = Math.floor(Math.random() * THANK_YOU_MESSAGES.length);
+    return THANK_YOU_MESSAGES[idx];
+  }
+
+  // ---------------------------------------------------------------
+  // メッセージ（トースト）の表示
+  // type: "success"（黄色・通常）または "error"（赤・エラー）
+  // ---------------------------------------------------------------
+  function showToast(message, type) {
+    if (toastTimerId) {
+      clearTimeout(toastTimerId);
+    }
+    el.toast.textContent = message;
+    el.toast.classList.toggle("toast-error", type === "error");
+    el.toast.classList.add("show");
+
+    var displayTime = 1400 + Math.floor(Math.random() * 600); // 1.4〜2.0秒
+    toastTimerId = setTimeout(function () {
+      el.toast.classList.remove("show");
+    }, displayTime);
+  }
+
+  // ---------------------------------------------------------------
+  // 取り消しボタンの表示・処理
+  // ---------------------------------------------------------------
+  function showUndoButton(targetRecordId) {
+    if (undoTimerId) {
+      clearTimeout(undoTimerId);
+    }
+    el.undoBtn.classList.add("show");
+    el.undoBtn.dataset.targetId = targetRecordId;
+
+    undoTimerId = setTimeout(function () {
+      hideUndoButton();
+    }, 2000);
+  }
+
+  function hideUndoButton() {
+    el.undoBtn.classList.remove("show");
+    el.undoBtn.dataset.targetId = "";
+  }
+
+  function handleUndoClick() {
+    var targetId = el.undoBtn.dataset.targetId;
+    if (!targetId) return;
+    deleteHistoryItem(targetId);
+    hideUndoButton();
+    if (undoTimerId) clearTimeout(undoTimerId);
+  }
+
+  // ---------------------------------------------------------------
+  // 履歴の表示
+  // ---------------------------------------------------------------
+  function renderHistory() {
+    el.historyList.innerHTML = "";
+
+    if (appData.history.length === 0) {
+      el.historyEmpty.style.display = "block";
+      el.historyList.appendChild(el.historyEmpty);
+      return;
+    }
+    el.historyEmpty.style.display = "none";
+
+    appData.history.forEach(function (record) {
+      var item = document.createElement("div");
+      item.className = "history-item";
+
+      var methodLabel = record.method === "cash" ? "💴 現金" : "📱 PayPay";
+      var badgeClass = record.method === "cash" ? "badge-cash" : "badge-paypay";
+
+      var html =
+        '<div class="history-row">' +
+          '<div class="history-left">' +
+            '<div class="history-time">' + escapeHtml(record.time) + '</div>' +
+            '<div class="history-main">' +
+              escapeHtml(String(record.qty)) + '匹' +
+              '<span class="history-badge ' + badgeClass + '">' + escapeHtml(methodLabel) + '</span>' +
+            '</div>' +
+          '</div>' +
+          '<div class="history-right">' +
+            '<div class="history-amount">' + formatNumber(record.amount) + '円</div>' +
+            '<button class="delete-btn" type="button" data-id="' + escapeHtml(record.id) + '" aria-label="この記録を削除">🗑️</button>' +
+          '</div>' +
+        '</div>';
+
+      // 現金で、おつりの記録が残っているものは、参考情報として小さく表示する
+      if (record.method === "cash" && typeof record.received === "number" && typeof record.change === "number") {
+        html += '<div class="history-change-note">受け取り ' + formatNumber(record.received) +
+                '円 → おつり ' + formatNumber(record.change) + '円</div>';
+      }
+
+      item.innerHTML = html;
+      el.historyList.appendChild(item);
+    });
+  }
+
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  // 履歴を1件削除し、集計も自動的に戻す
+  function deleteHistoryItem(recordId) {
+    var index = -1;
+    for (var i = 0; i < appData.history.length; i++) {
+      if (appData.history[i].id === recordId) {
+        index = i;
+        break;
+      }
+    }
+    if (index === -1) return;
+
+    var record = appData.history[index];
+
+    appData.count -= record.qty;
+    if (record.method === "cash") {
+      appData.cash -= record.amount;
+    } else {
+      appData.paypay -= record.amount;
+    }
+
+    if (appData.count < 0) appData.count = 0;
+    if (appData.cash < 0) appData.cash = 0;
+    if (appData.paypay < 0) appData.paypay = 0;
+
+    appData.history.splice(index, 1);
+
+    saveData();
+    renderAll();
+  }
+
+  // ---------------------------------------------------------------
+  // リセット処理（本体）
+  // ---------------------------------------------------------------
+  function performReset() {
+    appData = createEmptyData();
+    saveData();
+    renderAll();
+    hideUndoButton();
+    currentQty = 1;
+    renderQty();
+  }
+
+  // =================================================================
+  // 汎用の確認モーダル（削除・リセットの「本当にいいですか？」を表示する）
+  // ブラウザ標準のconfirm()の代わりに使う。
+  // =================================================================
+  function openConfirmModal(title, message, onConfirm) {
+    el.confirmModalTitle.textContent = title;
+    el.confirmModalMessage.textContent = message;
+    confirmModalCallback = onConfirm;
+    el.confirmModalOverlay.classList.add("show");
+  }
+
+  function closeConfirmModal() {
+    el.confirmModalOverlay.classList.remove("show");
+    confirmModalCallback = null;
+  }
+
+  // =================================================================
+  // 現金おつり計算モーダル
+  // =================================================================
+
+  // モーダルを開く。qtyは「今、選んでいる匹数」をそのまま使う
+  function openCashModal(qty) {
+    cashPendingQty = qty;
+    cashTotal = qty * PRICE_PER_UNIT;
+    cashReceived = 0;
+    renderCashModal();
+    el.cashModalOverlay.classList.add("show");
+  }
+
+  function closeCashModal() {
+    el.cashModalOverlay.classList.remove("show");
+  }
+
+  // 受け取り金額・おつりの表示を最新の状態に合わせて更新する
+  function renderCashModal() {
+    el.cashTotalAmount.textContent = formatNumber(cashTotal) + "円";
+    el.cashReceivedValue.textContent = formatNumber(cashReceived) + "円";
+
+    var change = cashReceived - cashTotal;
+
+    if (cashReceived < cashTotal) {
+      // まだ受け取った金額が足りない場合は、不足額を表示して確定できないようにする
+      el.changeBox.classList.remove("ok");
+      el.changeBox.classList.add("short");
+      el.changeLabel.textContent = "あと足りない金額";
+      el.changeValue.textContent = formatNumber(cashTotal - cashReceived) + "円";
+      el.cashConfirmBtn.classList.add("is-disabled");
+    } else {
+      el.changeBox.classList.remove("short");
+      el.changeBox.classList.add("ok");
+      el.changeLabel.textContent = "おつり";
+      el.changeValue.textContent = formatNumber(change) + "円";
+      el.cashConfirmBtn.classList.remove("is-disabled");
+    }
+  }
+
+  // クイックボタン（100円・500円…・ちょうど）が押されたときの処理
+  function handleQuickAmountClick(amountAttr) {
+    if (amountAttr === "exact") {
+      // 「ちょうど」は合計金額と同じ金額をそのまま入力する
+      cashReceived = cashTotal;
+    } else {
+      var amount = parseInt(amountAttr, 10);
+      if (!isNaN(amount)) {
+        cashReceived += amount;
+      }
+    }
+    renderCashModal();
+  }
+
+  // 受け取り金額の入力をやり直す
+  function handleCashClear() {
+    cashReceived = 0;
+    renderCashModal();
+  }
+
+  // 「受け取る」ボタンが押されたとき（金額が足りているときだけ実際に処理する）
+  function handleCashConfirm() {
+    if (cashReceived < cashTotal) return; // 念のための二重チェック
+    var change = cashReceived - cashTotal;
+    closeCashModal();
+    finalizeSale("cash", cashPendingQty, { received: cashReceived, change: change });
+  }
+
+  // ---------------------------------------------------------------
+  // イベントの登録
+  // ---------------------------------------------------------------
+  function bindEvents() {
+    el.btnMinus.addEventListener("click", function () { changeQty(-1); });
+    el.btnPlus.addEventListener("click", function () { changeQty(1); });
+
+    // 現金は「おつり計算モーダル」を開く。PayPayはそのまま即登録する（現金のやり取りがないため）
+    el.btnCash.addEventListener("click", function () { openCashModal(currentQty); });
+    el.btnPaypay.addEventListener("click", function () { finalizeSale("paypay", currentQty, null); });
+
+    el.undoBtn.addEventListener("click", handleUndoClick);
+
+    // リセットボタン：標準confirm()の代わりに自作モーダルを使う
+    el.btnReset.addEventListener("click", function () {
+      openConfirmModal(
+        "売上をリセット",
+        "今日の売上を全部消しますか？",
+        performReset
+      );
+    });
+
+    // 履歴の削除ボタン（イベント委譲）：押されたら自作モーダルで確認する
+    el.historyList.addEventListener("click", function (e) {
+      var target = e.target.closest(".delete-btn");
+      if (!target) return;
+      var id = target.dataset.id;
+      if (!id) return;
+
+      openConfirmModal(
+        "記録の削除",
+        "この記録を削除しますか？",
+        function () { deleteHistoryItem(id); }
+      );
+    });
+
+    // 汎用確認モーダルのボタン
+    el.confirmModalOk.addEventListener("click", function () {
+      var callback = confirmModalCallback;
+      closeConfirmModal();
+      if (typeof callback === "function") {
+        callback();
+      }
+    });
+    el.confirmModalCancel.addEventListener("click", closeConfirmModal);
+    // 背景（カードの外側）をタップした場合もキャンセルとして閉じる
+    el.confirmModalOverlay.addEventListener("click", function (e) {
+      if (e.target === el.confirmModalOverlay) closeConfirmModal();
+    });
+
+    // 現金モーダルのボタン
+    var quickButtons = el.cashModalOverlay.querySelectorAll(".quick-btn");
+    quickButtons.forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        handleQuickAmountClick(btn.dataset.amount);
+      });
+    });
+    el.cashClearBtn.addEventListener("click", handleCashClear);
+    el.cashConfirmBtn.addEventListener("click", handleCashConfirm);
+    el.cashCancelBtn.addEventListener("click", closeCashModal);
+    el.cashModalOverlay.addEventListener("click", function (e) {
+      if (e.target === el.cashModalOverlay) closeCashModal();
+    });
+  }
+
+  // ---------------------------------------------------------------
+  // アプリ起動
+  // ---------------------------------------------------------------
+  init();
+
+})();
+</script>
+</body>
+</html>
